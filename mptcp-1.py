@@ -36,15 +36,18 @@ def setup_mptcp():
     h2.cmd("ifconfig h2-eth0 10.0.1.2 netmask 255.255.255.0")
     h2.cmd("ifconfig h2-eth1 10.0.2.1 netmask 255.255.255.0")
     h2.cmd("sysctl -w net.ipv4.ip_forward=1")
-    h2.cmd("ip route add 10.0.2.2 dev h2-eth1")
-    h2.cmd("ip route add 10.0.1.1 dev h2-eth0")
+    h2.cmd("ip route add 10.0.2.0/24 dev h2-eth1")
+    h2.cmd("ip route add 10.0.1.0/24 dev h2-eth0")
+    h2.cmd("ip route add 10.0.4.2 via 10.0.2.2 dev h2-eth1")
 
     # h4 (Router 2)
     h4.cmd("ifconfig h4-eth0 10.0.3.2 netmask 255.255.255.0")
     h4.cmd("ifconfig h4-eth1 10.0.4.1 netmask 255.255.255.0")
     h4.cmd("sysctl -w net.ipv4.ip_forward=1")
-    h4.cmd("ip route add 10.0.4.2 dev h4-eth1")
-    h4.cmd("ip route add 10.0.3.1 dev h4-eth0")
+    h4.cmd("ip route add 10.0.4.0/24 dev h4-eth1")
+    h4.cmd("ip route add 10.0.3.0/24 dev h4-eth0")
+    h4.cmd("ip route add 10.0.2.2 via 10.0.4.2 dev h4-eth1")
+
 
     # h3 Addresses
     h3.cmd("ifconfig h3-eth0 10.0.2.2 netmask 255.255.255.0")
@@ -66,6 +69,7 @@ def setup_mptcp():
     h1.cmd("ip rule add from 10.0.3.1 table 2")
     h1.cmd("ip route add 10.0.3.0/24 dev h1-eth1 scope link table 2")
     h1.cmd("ip route add default via 10.0.3.2 dev h1-eth1 table 2")
+    h1.cmd("ip route add 10.0.4.0/24 via 10.0.3.2 dev h1-eth1")
     h1.cmd("ip route add default via 10.0.1.2") # Default gateway for h1
 
     # h3 Policy Routing
@@ -75,20 +79,25 @@ def setup_mptcp():
     h3.cmd("ip rule add from 10.0.4.2 table 2")
     h3.cmd("ip route add 10.0.4.0/24 dev h3-eth1 scope link table 2")
     h3.cmd("ip route add default via 10.0.4.1 dev h3-eth1 table 2")
+    h3.cmd("ip route add 10.0.3.0/24 via 10.0.4.1 dev h3-eth1")
     h3.cmd("ip route add default via 10.0.2.1") # Default gateway for h3
 
     print("*** Configuring MPTCP Endpoints")
-    # Tell h1 that eth1 is a subflow address
+    # h1: 使用 eth1 发起子流
     h1.cmd("ip mptcp endpoint add 10.0.3.1 dev h1-eth1 subflow")
+
+    # h3: 关键修改！使用 signal 模式宣告自己的第二块网卡地址
+    # 这样 h3 会告诉 h1："你可以连我的 10.0.4.2"
+    h3.cmd("ip mptcp endpoint flush") # 清除旧配置
+    h3.cmd("ip mptcp endpoint add 10.0.4.2 dev h3-eth1 signal")
+
+    # 确保两端都允许建立子流
     h1.cmd("ip mptcp limits set subflow 2 add_addr_accepted 2")
-    
-    # Tell h3 that eth1 is a subflow address
-    h3.cmd("ip mptcp endpoint add 10.0.4.2 dev h3-eth1 subflow")
     h3.cmd("ip mptcp limits set subflow 2 add_addr_accepted 2")
 
     print("*** Testing Connectivity")
     print("Path 1:", h1.cmd("ping -c 1 10.0.2.2"))
-    print("Path 2:", h1.cmd("ping -I h1-eth1 -c 1 10.0.4.2"))
+    print("Path 2:", h1.cmd("ping -c 1 -I h1-eth1 10.0.4.2"))
 
     CLI(net)
     net.stop()
