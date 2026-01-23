@@ -20,9 +20,9 @@ def setup_mptcp():
     net.addLink(h1, h2, intfName1='h1-eth0', intfName2='h2-eth0', bw=10, delay='10ms')
     net.addLink(h2, h3, intfName1='h2-eth1', intfName2='h3-eth0', bw=10, delay='10ms')
 
-    # Path 2: h1-eth1 <-> h4-eth0; h4-eth1 <-> h3-eth1 (Delay: 30ms)
-    net.addLink(h1, h4, intfName1='h1-eth1', intfName2='h4-eth0', bw=10, delay='30ms')
-    net.addLink(h4, h3, intfName1='h4-eth1', intfName2='h3-eth1', bw=10, delay='30ms')
+    # Path 2: h1-eth1 <-> h4-eth0; h4-eth1 <-> h3-eth1 (Delay: 10ms)
+    net.addLink(h1, h4, intfName1='h1-eth1', intfName2='h4-eth0', bw=10, delay='10ms')
+    net.addLink(h4, h3, intfName1='h4-eth1', intfName2='h3-eth1', bw=10, delay='10ms')
 
     net.build()
     net.start()
