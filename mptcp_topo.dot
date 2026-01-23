@@ -1,0 +1,42 @@
+digraph Topology {
+    rankdir=LR;
+    splines=true;
+    nodesep=1;
+    ranksep=2;
+
+    node [shape=box, fontsize=11];
+    edge [fontsize=10];
+
+    h1 [label="h1"];
+    h2 [label="h2\n(Router 1)"];
+    h4 [label="h4\n(Router 2)"];
+    h3 [label="h3"];
+
+    h1 -> h2 [
+        label="10ms",
+        taillabel="h1-eth0\n10.0.1.1",
+        headlabel="h2-eth0\n10.0.1.2",
+        labeldistance=2
+    ];
+
+    h2 -> h3 [
+        label="10ms",
+        taillabel="h2-eth1\n10.0.2.1",
+        headlabel="h3-eth0\n10.0.2.2",
+        labeldistance=2
+    ];
+
+    h1 -> h4 [
+        label="30ms",
+        taillabel="h1-eth1\n10.0.3.1",
+        headlabel="h4-eth0\n10.0.3.2",
+        labeldistance=2
+    ];
+
+    h4 -> h3 [
+        label="30ms",
+        taillabel="h4-eth1\n10.0.4.1",
+        headlabel="h3-eth1\n10.0.4.2",
+        labeldistance=2
+    ];
+}
