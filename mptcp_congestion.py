@@ -6,6 +6,9 @@ from mininet.link import TCLink
 from mininet.log import setLogLevel
 import time
 
+ss_filename = 'ss_history_5_loss.txt'
+iperf_logfile = 'iperf_mptcp_5_loss.log'
+
 def setup_mptcp():
     net = Mininet(controller=Controller, link=TCLink, cleanup=True)
 
@@ -104,21 +107,11 @@ def setup_mptcp():
     h3.cmd('mptcpize run iperf3 -s &')
     time.sleep(2)
 
-    # 在启动 iperf3 之后插入
-    print("*** Starting background CWND logger...")
-    # 使用 & 让其后台运行，使用 >> 进行追加写入，增加时间戳方便后续绘图
-    h1.cmd('while true; do date >> ss_stats.txt; ss -tni >> ss_stats.txt; sleep 1; done &')
-    # 记录该进程的 PID，方便实验结束时杀掉它
-    logger_pid = h1.cmd('echo $!').strip()
-
-    # ... 执行你的丢包测试逻辑 ...
-
-    # 实验结束后停止记录
-    h1.cmd(f'kill {logger_pid}')
-
     print("*** Starting iperf3 client on h1 (Duration: 60s)")
     # 将输出重定向到文件以便后续分析
-    h1.cmd('mptcpize run iperf3 -c 10.0.2.2 -t 60 -i 1 > iperf_mptcp.log &')
+    h1.cmd(f'mptcpize run iperf3 -c 10.0.2.2 -t 60 -i 1 > {iperf_logfile} &')
+
+    h1.cmd(f'for i in {{1..60}}; do date >> {ss_filename}; ss -tni >> {ss_filename}; sleep 1; done &')
 
     # 第一阶段：基准期 (20s)
     print("Phase 1: Baseline (0-20s) - Both paths clear")
@@ -128,9 +121,6 @@ def setup_mptcp():
     print("Phase 2: Congestion (20-40s) - Injecting 5% loss on Path 1")
     h1.cmd('tc qdisc add dev h1-eth0 root netem loss 5%')
     
-
-    # os.system('ip netns exec h1 ss -Mni > ss_congestion.txt')
-    
     time.sleep(20)
 
     # 第三阶段：恢复期 (20s)
@@ -139,7 +129,7 @@ def setup_mptcp():
     
     time.sleep(20)
 
-    print("*** Experiment Finished. Results saved to iperf_mptcp.log")
+    print(f"*** Experiment Finished. Results saved to {iperf_logfile} and {ss_filename}")
 
     CLI(net)
     net.stop()

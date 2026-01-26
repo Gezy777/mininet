@@ -1,1 +1,5 @@
 *.pcap
+*.log
+*.txt
+*.png
+!pictures/
