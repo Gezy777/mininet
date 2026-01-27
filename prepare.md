@@ -21,6 +21,7 @@ sudo apt install iperf3
 ```
 ### 3.安装Xterm并自定义
 ```bash
+sudo apt install xterm
 ## 修改xterm窗口的大小
 nano ~/.Xresources
 ## 添加内容

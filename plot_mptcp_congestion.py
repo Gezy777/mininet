@@ -1,69 +1,10 @@
 import matplotlib.pyplot as plt
 import re
 
-# 原始数据（截取你提供的 log 内容）
-log_data = """
-[  5]   0.00-1.00   sec  4.88 MBytes  40.9 Mbits/sec    0    253 KBytes       
-[  5]   1.00-2.00   sec  2.62 MBytes  22.0 Mbits/sec    0    313 KBytes       
-[  5]   2.00-3.00   sec  3.00 MBytes  25.2 Mbits/sec    0    373 KBytes       
-[  5]   3.00-4.00   sec  1.62 MBytes  13.6 Mbits/sec    0    433 KBytes       
-[  5]   4.00-5.00   sec  3.75 MBytes  31.5 Mbits/sec    0    492 KBytes       
-[  5]   5.00-6.00   sec  2.12 MBytes  17.8 Mbits/sec    0    551 KBytes       
-[  5]   6.00-7.00   sec  2.38 MBytes  19.9 Mbits/sec    0    612 KBytes       
-[  5]   7.00-8.00   sec  5.38 MBytes  45.1 Mbits/sec    0    673 KBytes       
-[  5]   8.00-9.00   sec  2.88 MBytes  24.1 Mbits/sec    0    732 KBytes       
-[  5]   9.00-10.00  sec  0.00 Bytes  0.00 bits/sec    0    792 KBytes       
-[  5]  10.00-11.00  sec  3.38 MBytes  28.3 Mbits/sec    0    856 KBytes       
-[  5]  11.00-12.00  sec  3.62 MBytes  30.4 Mbits/sec    0    997 KBytes       
-[  5]  12.00-13.00  sec  4.12 MBytes  34.6 Mbits/sec    0   1.17 MBytes       
-[  5]  13.00-14.00  sec  5.12 MBytes  43.0 Mbits/sec    0   1.40 MBytes       
-[  5]  14.00-15.00  sec  6.25 MBytes  52.4 Mbits/sec    0   1.66 MBytes       
-[  5]  15.00-16.00  sec  0.00 Bytes  0.00 bits/sec    0   1.95 MBytes       
-[  5]  16.00-17.00  sec  7.88 MBytes  66.1 Mbits/sec    0   2.26 MBytes       
-[  5]  17.00-18.00  sec  10.1 MBytes  84.9 Mbits/sec    0   2.45 MBytes       
-[  5]  18.00-19.00  sec  0.00 Bytes  0.00 bits/sec    0   2.09 MBytes       
-[  5]  19.00-20.00  sec  0.00 Bytes  0.00 bits/sec  689    820 KBytes       
-[  5]  20.00-21.00  sec  0.00 Bytes  0.00 bits/sec  653    747 KBytes       
-[  5]  21.00-22.00  sec  0.00 Bytes  0.00 bits/sec   42    696 KBytes       
-[  5]  22.00-23.00  sec  10.6 MBytes  89.1 Mbits/sec   45    639 KBytes       
-[  5]  23.00-24.00  sec  0.00 Bytes  0.00 bits/sec   50    585 KBytes       
-[  5]  24.00-25.00  sec  0.00 Bytes  0.00 bits/sec   48    437 KBytes       
-[  5]  25.00-26.00  sec  0.00 Bytes  0.00 bits/sec   42    298 KBytes       
-[  5]  26.00-27.00  sec  0.00 Bytes  0.00 bits/sec   34   72.1 KBytes       
-[  5]  27.00-28.00  sec  0.00 Bytes  0.00 bits/sec   25   7.07 KBytes       
-[  5]  28.00-29.00  sec  0.00 Bytes  0.00 bits/sec    7   8.48 KBytes       
-[  5]  29.00-30.00  sec  0.00 Bytes  0.00 bits/sec    8   15.6 KBytes       
-[  5]  30.00-31.00  sec  0.00 Bytes  0.00 bits/sec   13   2.83 KBytes       
-[  5]  31.00-32.00  sec  10.4 MBytes  87.0 Mbits/sec    8   2.83 KBytes       
-[  5]  32.00-33.00  sec  0.00 Bytes  0.00 bits/sec    0   14.1 KBytes       
-[  5]  33.00-34.00  sec  0.00 Bytes  0.00 bits/sec    9   4.24 KBytes       
-[  5]  34.00-35.00  sec  0.00 Bytes  0.00 bits/sec    6   9.90 KBytes       
-[  5]  35.00-36.00  sec  0.00 Bytes  0.00 bits/sec    8   9.90 KBytes       
-[  5]  36.00-37.00  sec  0.00 Bytes  0.00 bits/sec    9   7.07 KBytes       
-[  5]  37.00-38.00  sec  0.00 Bytes  0.00 bits/sec   10   7.07 KBytes       
-[  5]  38.00-39.00  sec  0.00 Bytes  0.00 bits/sec   10   4.24 KBytes       
-[  5]  39.00-40.00  sec  0.00 Bytes  0.00 bits/sec    2   14.1 KBytes       
-[  5]  40.00-41.00  sec  0.00 Bytes  0.00 bits/sec    0   36.8 KBytes       
-[  5]  41.00-42.00  sec  0.00 Bytes  0.00 bits/sec    0   56.6 KBytes       
-[  5]  42.00-43.00  sec  15.1 MBytes   127 Mbits/sec    0   70.7 KBytes       
-[  5]  43.00-44.00  sec  0.00 Bytes  0.00 bits/sec    0   82.0 KBytes       
-[  5]  44.00-45.00  sec  0.00 Bytes  0.00 bits/sec    0   91.9 KBytes       
-[  5]  45.00-46.00  sec  0.00 Bytes  0.00 bits/sec    0    102 KBytes       
-[  5]  46.00-47.00  sec  0.00 Bytes  0.00 bits/sec    0    110 KBytes       
-[  5]  47.00-48.00  sec  0.00 Bytes  0.00 bits/sec    0    154 KBytes       
-[  5]  48.00-49.00  sec  0.00 Bytes  0.00 bits/sec    0    229 KBytes       
-[  5]  49.00-50.00  sec  10.8 MBytes  90.2 Mbits/sec    0    325 KBytes       
-[  5]  50.00-51.00  sec  0.00 Bytes  0.00 bits/sec    0    444 KBytes       
-[  5]  51.00-52.00  sec  0.00 Bytes  0.00 bits/sec    0    587 KBytes       
-[  5]  52.00-53.00  sec  10.5 MBytes  88.1 Mbits/sec    0    755 KBytes       
-[  5]  53.00-54.00  sec  0.00 Bytes  0.00 bits/sec    0    953 KBytes       
-[  5]  54.00-55.00  sec  0.00 Bytes  0.00 bits/sec    0   1.16 MBytes       
-[  5]  55.00-56.00  sec  0.00 Bytes  0.00 bits/sec    0   1.40 MBytes       
-[  5]  56.00-57.00  sec  10.4 MBytes  87.0 Mbits/sec    0   1.70 MBytes       
-[  5]  57.00-58.00  sec  0.00 Bytes  0.00 bits/sec    0   1.99 MBytes       
-[  5]  58.00-59.00  sec  0.00 Bytes  0.00 bits/sec    0   2.36 MBytes       
-[  5]  59.00-60.00  sec  0.00 Bytes  0.00 bits/sec    0   2.76 MBytes       
-"""
+# 从文件中读取数据
+def read_log_file(file_path):
+    with open(file_path, 'r') as file:
+        return file.read()
 
 def parse_iperf_log(data):
     times, bitrates, retrs, cwnds = [], [], [], []
@@ -85,21 +26,31 @@ def parse_iperf_log(data):
                 cwnd_val *= 1024
                 
             times.append(t_end)
-            bitrates.append(bitrate)
+            bitrates.append(bitrate / 8)
             retrs.append(retr)
             cwnds.append(cwnd_val)
             
     return times, bitrates, retrs, cwnds
 
-# 解析并绘图
+filename = 'iperf_mptcp_5_loss.log'
+outputname = 'iperf_mptcp_5_loss_Bitrate_CWND.png'
+
+# 读取日志文件并解析
+log_data = read_log_file(filename)  # 替换为你的文件路径
 t, b, r, c = parse_iperf_log(log_data)
 
+print(t)
+print(b)
+print(r)
+print(c)
+
+# 绘图
 fig, ax1 = plt.subplots(figsize=(12, 6))
 
 # 绘制 Bitrate
 color = 'tab:blue'
 ax1.set_xlabel('Time (sec)')
-ax1.set_ylabel('Bitrate (Mbps)', color=color)
+ax1.set_ylabel('Bitrate (MB/s)', color=color)
 ax1.plot(t, b, color=color, linewidth=2, label='Bitrate')
 ax1.tick_params(axis='y', labelcolor=color)
 ax1.grid(True, linestyle='--', alpha=0.6)
@@ -113,9 +64,10 @@ ax2.tick_params(axis='y', labelcolor=color)
 
 # 标记重传事件
 for i, val in enumerate(r):
-    if val > 50: # 当重传大于50时标记
-        ax1.annotate(f'Retr:{val}', (t[i], b[i]), textcoords="offset points", xytext=(0,10), ha='center', fontsize=8, color='darkred')
+    if val > 50:  # 当重传大于50时标记
+        ax1.annotate(f'Retr:{val}', (t[i], b[i]), textcoords="offset points", xytext=(0, 10), ha='center', fontsize=8, color='darkred')
 
 plt.title('MPTCP Congestion Control Analysis: Bitrate vs CWND')
 fig.tight_layout()
-plt.show()
+plt.savefig(outputname)
+
