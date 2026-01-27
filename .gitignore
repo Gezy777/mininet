@@ -3,3 +3,5 @@
 *.txt
 *.png
 !pictures/
+__pycache__
+*.pyc

@@ -1,10 +1,8 @@
 import re
 from collections import defaultdict
 import matplotlib.pyplot as plt
-filename = 'ss_history_5_loss.txt'
-save_fig = 'mptcp_all_metrics_5_loss.png'
 
-def compare_mptcp_full(filename):
+def compare_mptcp_full(filename, savefile):
     # 存储结构: { 时间: { IP: {cwnd: x, rtt: x, sent: x} } }
     stats = defaultdict(lambda: defaultdict(dict))
     current_time = "Unknown"
@@ -39,13 +37,6 @@ def compare_mptcp_full(filename):
                             'rtt': rtt.group(1) if rtt else "N/A",
                             'sent': round(int(bytes_sent_match.group(1)) / 1024 / 1024, 2)
                         }
-
-    # 4. 打印格式化表头
-    header = f"{'Time':<10} | {'Path 1 (10.0.1.1)':<30} | {'Path 2 (10.0.3.1)':<30}"
-    sub_header = f"{' ':<10} | {'CWND':<6} {'RTT':<8} {'SENT':<10} | {'CWND':<6} {'RTT':<8} {'SENT':<10}"
-    print(header)
-    print(sub_header)
-    print("-" * 80)
     p1_cwnd = []
     p2_cwnd = []
     p1_rtt = []
@@ -68,13 +59,6 @@ def compare_mptcp_full(filename):
         p2_cwnd.append(p2.get('cwnd', 'N/A'))
         p2_rtt.append(p2.get('rtt', 'N/A'))
         p2_sent.append(p2.get('sent', '0'))
-
-        # 格式化 Path 1 数据
-        p1_str = f"{p1.get('cwnd','N/A'):<6} {p1.get('rtt','N/A'):<8} {p1.get('sent','0'):<6}MB"
-        # 格式化 Path 2 数据
-        p2_str = f"{p2.get('cwnd','N/A'):<6} {p2.get('rtt','N/A'):<8} {p2.get('sent','0'):<6}MB"
-        
-        print(f"{ts:<10} | {p1_str:<30} | {p2_str:<30}")
     
     plt.rcParams.update({
     'font.size': 16,          # 全局默认字体
@@ -133,6 +117,4 @@ def compare_mptcp_full(filename):
     plt.tight_layout()
 
     # 保存到一张图
-    plt.savefig(save_fig)
-
-compare_mptcp_full(filename)
+    plt.savefig(savefile)

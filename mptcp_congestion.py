@@ -1,139 +1,58 @@
 #!/usr/bin/python
-from mininet.net import Mininet
-from mininet.node import Controller
 from mininet.cli import CLI
-from mininet.link import TCLink
 from mininet.log import setLogLevel
 import time
+import mptcp
+import simulator_paint
 
-ss_filename = 'ss_history_5_loss.txt'
-iperf_logfile = 'iperf_mptcp_5_loss.log'
-
-def setup_mptcp():
-    net = Mininet(controller=Controller, link=TCLink, cleanup=True)
-
-    print("*** Adding hosts and nodes")
-    h1 = net.addHost('h1')
-    h2 = net.addHost('h2') # Router 1
-    h3 = net.addHost('h3')
-    h4 = net.addHost('h4') # Router 2
-
-    print("*** Creating links")
-    # Path 1: h1-eth0 <-> h2-eth0; h2-eth1 <-> h3-eth0 (Delay: 10ms)
-    net.addLink(h1, h2, intfName1='h1-eth0', intfName2='h2-eth0', bw=10, delay='10ms')
-    net.addLink(h2, h3, intfName1='h2-eth1', intfName2='h3-eth0', bw=10, delay='10ms')
-
-    # Path 2: h1-eth1 <-> h4-eth0; h4-eth1 <-> h3-eth1 (Delay: 10ms)
-    net.addLink(h1, h4, intfName1='h1-eth1', intfName2='h4-eth0', bw=10, delay='10ms')
-    net.addLink(h4, h3, intfName1='h4-eth1', intfName2='h3-eth1', bw=10, delay='10ms')
-
-    net.build()
-    net.start()
-
-    print("*** Configuring IP Addresses")
-    # h1 Addresses
-    h1.cmd("ifconfig h1-eth0 10.0.1.1 netmask 255.255.255.0")
-    h1.cmd("ifconfig h1-eth1 10.0.3.1 netmask 255.255.255.0")
-
-    # h2 (Router 1)
-    h2.cmd("ifconfig h2-eth0 10.0.1.2 netmask 255.255.255.0")
-    h2.cmd("ifconfig h2-eth1 10.0.2.1 netmask 255.255.255.0")
-    h2.cmd("sysctl -w net.ipv4.ip_forward=1")
-    h2.cmd("ip route add 10.0.2.0/24 dev h2-eth1")
-    h2.cmd("ip route add 10.0.1.0/24 dev h2-eth0")
-    h2.cmd("ip route add 10.0.4.2 via 10.0.2.2 dev h2-eth1")
-
-    # h4 (Router 2)
-    h4.cmd("ifconfig h4-eth0 10.0.3.2 netmask 255.255.255.0")
-    h4.cmd("ifconfig h4-eth1 10.0.4.1 netmask 255.255.255.0")
-    h4.cmd("sysctl -w net.ipv4.ip_forward=1")
-    h4.cmd("ip route add 10.0.4.0/24 dev h4-eth1")
-    h4.cmd("ip route add 10.0.3.0/24 dev h4-eth0")
-    h4.cmd("ip route add 10.0.2.2 via 10.0.4.2 dev h4-eth1")
+stage_time = 60
+loss = 5
+ss_filename = f'ss_history_{"no" if loss == 0 else loss}_loss.txt'
+ss_savefile = f'ss_history_{"no" if loss == 0 else loss}_loss.png'
+iperf_logfile = f'iperf_mptcp_{"no" if loss == 0 else loss}_loss.log'
 
 
-    # h3 Addresses
-    h3.cmd("ifconfig h3-eth0 10.0.2.2 netmask 255.255.255.0")
-    h3.cmd("ifconfig h3-eth1 10.0.4.2 netmask 255.255.255.0")
+setLogLevel('info')
+net, h = mptcp.mptcp_topo()
+h1, h2, h3, h4 = h[0], h[1], h[2], h[3]
 
-    print("*** Critical: Disabling RP Filter and Enabling MPTCP")
-    for h in [h1, h2, h3, h4]:
-        h.cmd("sysctl -w net.ipv4.conf.all.rp_filter=0")
-        h.cmd("sysctl -w net.ipv4.conf.default.rp_filter=0")
-        for intf in h.intfList():
-            h.cmd(f"sysctl -w net.ipv4.conf.{intf}.rp_filter=0")
-        h.cmd("sysctl -w net.mptcp.enabled=1")
+# print("*** Testing Connectivity")
+# print("Path 1:", h1.cmd("ping -c 1 10.0.2.2"))
+# print("Path 2:", h1.cmd("ping -c 1 -I h1-eth1 10.0.4.2"))
 
-    print("*** Setting up Policy Routing for Multi-homing")
-    # h1 Policy Routing
-    h1.cmd("ip rule add from 10.0.1.1 table 1")
-    h1.cmd("ip route add 10.0.1.0/24 dev h1-eth0 scope link table 1")
-    h1.cmd("ip route add default via 10.0.1.2 dev h1-eth0 table 1")
-    h1.cmd("ip rule add from 10.0.3.1 table 2")
-    h1.cmd("ip route add 10.0.3.0/24 dev h1-eth1 scope link table 2")
-    h1.cmd("ip route add default via 10.0.3.2 dev h1-eth1 table 2")
-    h1.cmd("ip route add 10.0.4.0/24 via 10.0.3.2 dev h1-eth1")
-    h1.cmd("ip route add default via 10.0.1.2") # Default gateway for h1
+# 3. 运行拥塞控制实验
+# print("*** Starting iperf3 server on h3")
+h3.cmd('mptcpize run iperf3 -s &')
+time.sleep(2)
 
-    # h3 Policy Routing
-    h3.cmd("ip rule add from 10.0.2.2 table 1")
-    h3.cmd("ip route add 10.0.2.0/24 dev h3-eth0 scope link table 1")
-    h3.cmd("ip route add default via 10.0.2.1 dev h3-eth0 table 1")
-    h3.cmd("ip rule add from 10.0.4.2 table 2")
-    h3.cmd("ip route add 10.0.4.0/24 dev h3-eth1 scope link table 2")
-    h3.cmd("ip route add default via 10.0.4.1 dev h3-eth1 table 2")
-    h3.cmd("ip route add 10.0.3.0/24 via 10.0.4.1 dev h3-eth1")
-    h3.cmd("ip route add default via 10.0.2.1") # Default gateway for h3
+# print(f"*** Starting iperf3 client on h1 (Duration: {stage_time * 3}s)")
+# 将输出重定向到文件以便后续分析
+h1.cmd(f'mptcpize run iperf3 -c 10.0.2.2 -t {stage_time * 3} -i 1 > {iperf_logfile} &')
 
-    print("*** Configuring MPTCP Endpoints")
-    # h1: 使用 eth1 发起子流
-    h1.cmd("ip mptcp endpoint add 10.0.3.1 dev h1-eth1 subflow")
+h1.cmd(f'for i in {{1..{stage_time * 3}}}; do date >> {ss_filename}; ss -tni >> {ss_filename}; sleep 1; done &')
 
-    # h3: 关键修改！使用 signal 模式宣告自己的第二块网卡地址
-    # 这样 h3 会告诉 h1："你可以连我的 10.0.4.2"
-    h3.cmd("ip mptcp endpoint flush") # 清除旧配置
-    h3.cmd("ip mptcp endpoint add 10.0.4.2 dev h3-eth1 signal")
+# 第一阶段：基准期 
+# print(f"Phase 1: Baseline (0-{stage_time}s) - Both paths clear")
+time.sleep(stage_time)
 
-    # 确保两端都允许建立子流
-    h1.cmd("ip mptcp limits set subflow 2 add_addr_accepted 2")
-    h3.cmd("ip mptcp limits set subflow 2 add_addr_accepted 2")
+# 第二阶段：注入干扰
+# print(f"Phase 2: Congestion ({stage_time}-{stage_time * 2}s) - Injecting {loss}% loss on Path 1")
+if loss != 0:
+    h1.cmd(f'tc qdisc add dev h1-eth0 root netem loss {loss}%')
 
-    print("*** Testing Connectivity")
-    print("Path 1:", h1.cmd("ping -c 1 10.0.2.2"))
-    print("Path 2:", h1.cmd("ping -c 1 -I h1-eth1 10.0.4.2"))
+time.sleep(stage_time)
 
-    # 3. 运行拥塞控制实验
-    print("*** Starting iperf3 server on h3")
-    h3.cmd('mptcpize run iperf3 -s &')
-    time.sleep(2)
+# 第三阶段：恢复期
+# print(f"Phase 3: Recovery ({stage_time * 2}-{stage_time * 3}s) - Removing loss on Path 1")
+if loss != 0:
+    h1.cmd(f'tc qdisc del dev h1-eth0 root')
 
-    print("*** Starting iperf3 client on h1 (Duration: 60s)")
-    # 将输出重定向到文件以便后续分析
-    h1.cmd(f'mptcpize run iperf3 -c 10.0.2.2 -t 60 -i 1 > {iperf_logfile} &')
+time.sleep(stage_time)
 
-    h1.cmd(f'for i in {{1..60}}; do date >> {ss_filename}; ss -tni >> {ss_filename}; sleep 1; done &')
+# print(f"*** Experiment Finished. Results saved to {iperf_logfile} and {ss_filename}")
 
-    # 第一阶段：基准期 (20s)
-    print("Phase 1: Baseline (0-20s) - Both paths clear")
-    time.sleep(20)
+CLI(net)
+net.stop()
 
-    # 第二阶段：注入干扰 (20s)
-    print("Phase 2: Congestion (20-40s) - Injecting 5% loss on Path 1")
-    h1.cmd('tc qdisc add dev h1-eth0 root netem loss 5%')
-    
-    time.sleep(20)
+simulator_paint.compare_mptcp_full(ss_filename, ss_savefile)
 
-    # 第三阶段：恢复期 (20s)
-    print("Phase 3: Recovery (40-60s) - Removing loss on Path 1")
-    h1.cmd('tc qdisc del dev h1-eth0 root')
-    
-    time.sleep(20)
-
-    print(f"*** Experiment Finished. Results saved to {iperf_logfile} and {ss_filename}")
-
-    CLI(net)
-    net.stop()
-
-if __name__ == '__main__':
-    setLogLevel('info')
-    setup_mptcp()

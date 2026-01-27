@@ -4,9 +4,8 @@ from mininet.node import Controller
 from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.log import setLogLevel
-import time
 
-def setup_mptcp():
+def mptcp_topo():
     net = Mininet(controller=Controller, link=TCLink, cleanup=True)
 
     print("*** Adding hosts and nodes")
@@ -94,14 +93,15 @@ def setup_mptcp():
     # 确保两端都允许建立子流
     h1.cmd("ip mptcp limits set subflow 2 add_addr_accepted 2")
     h3.cmd("ip mptcp limits set subflow 2 add_addr_accepted 2")
+    return net, [h1, h2, h3, h4]
 
+if __name__ == '__main__':
+    setLogLevel('info')
+    net, h = mptcp_topo()
+    h1, h2, h3, h4 = h[0], h[1], h[2], h[3]
     print("*** Testing Connectivity")
     print("Path 1:", h1.cmd("ping -c 1 10.0.2.2"))
     print("Path 2:", h1.cmd("ping -c 1 -I h1-eth1 10.0.4.2"))
 
     CLI(net)
     net.stop()
-
-if __name__ == '__main__':
-    setLogLevel('info')
-    setup_mptcp()
