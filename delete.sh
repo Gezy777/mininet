@@ -1,1 +1,1 @@
-rm -f *.log *.txt *.png
+rm -f *.log *.txt *.png *.pcap
