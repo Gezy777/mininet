@@ -1,0 +1,1 @@
+tshark -i h3-eth1 -q -z io,stat,1
