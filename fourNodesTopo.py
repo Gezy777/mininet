@@ -16,8 +16,8 @@ def mptcp_topo():
 
     print("*** Creating links")
     # Path 1: h1-eth0 <-> h2-eth0; h2-eth1 <-> h3-eth0 (Delay: 10ms)
-    net.addLink(h1, h2, intfName1='h1-eth0', intfName2='h2-eth0', bw=100, delay='1ms')
-    net.addLink(h2, h3, intfName1='h2-eth1', intfName2='h3-eth0', bw=100, delay='1ms')
+    net.addLink(h1, h2, intfName1='h1-eth0', intfName2='h2-eth0', bw=50, delay='1ms')
+    net.addLink(h2, h3, intfName1='h2-eth1', intfName2='h3-eth0', bw=50, delay='1ms')
 
     # Path 2: h1-eth1 <-> h4-eth0; h4-eth1 <-> h3-eth1 (Delay: 10ms)
     net.addLink(h1, h4, intfName1='h1-eth1', intfName2='h4-eth0', bw=100, delay='10ms')
